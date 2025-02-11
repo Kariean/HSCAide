@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{%if "user" in session%}
+    {% block log %}
+        <button class="button-17" role="button" onclick="window.location.href = '/logout';">Logout</button>
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+    <div class="marks-box">
+        <div class="subject-container" style="padding: 20px;">
+            <table border="1" id="ChosencoursesTable" style='width: 100%; height: 53%;'>
+                <tr>
+                    <th style='width: 25%'>Course</th>
+                    <th style='width: 10%'>Units</th>
+                    <th style='width: 15%'>Assessment 1</th>
+                    <th style='width: 15%'>Assessment 2</th>
+                    <th style='width: 15%'>Assessment 3</th>
+                    <th style='width: 15%'>Assessment 4</th>
+                    <th style='width: 15%'>Final Average</th>
+                </tr>
+
+                {% for course in chosen_courses %}
+                    <tr style='height: 30px'>
+                        <td>{{ course }}</td>
+                        <td style="text-align: center">{{ 1 if "Extension" in course else 2 }}</td>
+
+                        {% for i in range(1, 5) %}
+                            <td>
+                                <input style='width: 93%; background-color: #001845; color: white;' type="number" class="marks" data-course="{{ course }}" data-index="{{ i }}" 
+                                    min="0" max="100" value="{{ session['marks'].get(course, {}).get(i|string, '') if session.get('marks') else '' }}">
+                            </td>
+                        {% endfor %}
+                        <td id="average-{{ course }}">-</td>
+                    </tr>
+                {% endfor %}
+
+                <tr>
+                    <td><strong>Total Units</strong></td>
+                    <td><strong>{{ total_units }}</strong></td>
+                    <td colspan="5"></td>
+                </tr>
+            </table>
+
+            <h3>Assessment Weights:</h3>
+            <table border="1" id="WeightsTable" style='width: 100%; height: 40%;'>
+                <tr>
+                    <th style='width: 20%'>Course</th>
+                    {% for i in range(1, 5) %}
+                        <th style='width: 24%'>Weight {{ i }} (%)</th>
+                    {% endfor %}
+                </tr>
+
+                {% for course in chosen_courses %}
+                    <tr>
+                        <td >{{ course }}</td>
+                        {% for i in range(1, 5) %}
+                            <td >
+                                <input style='width: 93%; background-color: #001845; color: white;' type="number" class="weight" data-course="{{ course }}" data-index="{{ i }}" 
+                                    min="0" max="100" value="{{ session['weights'].get(course, {}).get(i|string, '25') if session.get('weights') else '25' }}">
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+    
+    <div class="rankings-box" >
+        <div class="ranking-container" style="padding: 20px;">
+        <div id="rankings"></div>
+        </div>
+    </div>
+    
+    <script>
+        function calculateFinalAverages() {
+            const courses = document.querySelectorAll("#ChosencoursesTable tr:not(:first-child):not(:last-child)");
+            let rankings = [];
+            
+            courses.forEach(row => {
+                const courseName = row.cells[0].innerText.trim();
+                let totalWeightedScore = 0;
+                let totalWeight = 0;
+
+                for (let i = 1; i <= 4; i++) {
+                    let markInput = row.querySelector(`.marks[data-course="${courseName}"][data-index="${i}"]`);
+                    let weightInput = document.querySelector(`.weight[data-course="${courseName}"][data-index="${i}"]`);
+
+                    let mark = markInput.value ? parseFloat(markInput.value) : 0;
+                    let weight = weightInput.value ? parseFloat(weightInput.value) : 0;
+
+                    totalWeightedScore += (mark * weight);
+                    totalWeight += weight;
+                }
+
+                let average = totalWeight > 0 ? (totalWeightedScore / totalWeight).toFixed(2) : "-";
+                document.getElementById(`average-${courseName}`).innerText = average;
+                
+                if (!isNaN(average)) {
+                    rankings.push({ course: courseName, average: parseFloat(average) });
+                }
+            });
+            updateRankings(rankings);
+        }
+
+        function updateRankings(rankings) {
+            rankings.sort((a, b) => b.average - a.average);
+            let rankingHTML = `
+                <table border="1" style='width: 440px; height: 650px; text-align: center; overflow-y:hidden;'>
+                    <tr>
+                        <th>Ranking</th>
+                        <th>Course</th>
+                        <th>Average</th>
+                    </tr>`;
+            
+            rankings.forEach((course, index) => {
+                rankingHTML += `
+                    <tr style='height: 60px'>
+                        <td>${index + 1}</td>
+                        <td style='width: 100%'>${course.course}</td>
+                        <td>${course.average.toFixed(2)}</td>
+                    </tr>`;
+            });
+
+            rankingHTML += `</table>`;
+            document.getElementById("rankings").innerHTML = rankingHTML;
+        }
+
+        function saveMarksAndWeights() {
+            let marksData = {};
+            let weightsData = {};
+
+            document.querySelectorAll(".marks").forEach(input => {
+                let course = input.dataset.course;
+                let index = input.dataset.index;
+                if (!marksData[course]) marksData[course] = {};
+                marksData[course][index] = input.value || 0;
+            });
+
+            document.querySelectorAll(".weight").forEach(input => {
+                let course = input.dataset.course;
+                let index = input.dataset.index;
+                if (!weightsData[course]) weightsData[course] = {};
+                weightsData[course][index] = input.value || 0;
+            });
+
+            fetch("/save_marks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ marks: marksData, weights: weightsData })
+            }).then(response => response.json()).then(data => {
+                console.log("Saved successfully", data);
+            }).catch(error => console.error("Error:", error));
+        }
+
+        document.addEventListener("input", () => {
+            calculateFinalAverages();
+            saveMarksAndWeights();
+        });
+
+        document.addEventListener("DOMContentLoaded", () => {
+            calculateFinalAverages();
+        });
+    </script>
+
+{% endblock %}

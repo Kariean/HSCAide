@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+
+
+
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for msg in messages %}
+
+        <div class="alert">
+            <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>  
+            {{msg}}
+        </div>
+
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<img src="{{ url_for('static', filename='hsc_homepageimg.jpg') }}" alt="HSCAide Homepage Image" style="position: fixed; top: 250px; right:100px; width: 50%; height:auto; margin-left:10px;">
+
+<div class ="intro-box">   
+    <h1>Welcome to HSCA</h1>
+    <h3>Welcome to HSCAide - Your Ultimate HSC Companion! HSCAide is a comprehensive platform designed to support Stage 6 students in their journey through the Higher School Certificate (HSC). 
+        Our mission is to simplify your HSC experience by providing all the tools and resources you need in one convenient place. Whether you're looking for course information, 
+        or a way to track your marks and view your chosen courses, HSCAide has you covered. Tailored specifically for Stage 6 students, this app helps you stay organized, 
+        improve your marks, and access high-quality study resources, making it easier to excel in your HSC exams. With HSCAide, everything you need is just a click away!</h3>
+    <h1>Login Below:</h1>
+    <form action ="#" method="post">
+        <p><input type="text" name="nm" placeholder="Enter a Username"/></p>
+        <p><input type="email" name="email" placeholder="Enter Email" value="{{email if email}}"/></p>
+        <p><input type="submit" value="submit"/></p>
+    </form>
+
+
+</div>
+
+{% endblock %}
+

@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{%if "user" in session%}
+    {% block log %}
+        <button class="button-17" role="button" onclick="window.location.href = '/logout';">Logout</button>
+    {% endblock %}
+{% endif %}
+
+{% block content %}
+
+    <div class ="search-box">     
+        <label for="myInput"></label>
+        <input type="text" placeholder="Search.." id="myInput" onkeyup="updateFilters()">
+
+        <div class="search-container">
+        <div class="filter-container">
+            <div class="filter">
+                <label for="facultyFilter">Filter by Faculty:</label>
+                <select id="areaFilter" onchange="updateFilters()">
+                    <option value="all">All</option>
+                    <option value="English">English</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="HSIE">HSIE</option>
+                    <option value="TAS">TAS</option>
+                    <option value="Creative Arts">Creative Arts</option>
+                    <option value="PDHPE">PDHPE</option>
+                    <option value="Languages">Languages</option>
+                    <option value="VET">VET</option>
+                </select>
+
+
+                <br><br>
+                <label for="difficultyFilter">Filter by Difficulty:</label>
+                <select id="difficultyFilter" onchange="updateFilters()">
+                    <option value="all">All</option>
+                    <option value="Standard">Standard</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="Extension">Extension</option>
+                </select>
+                <br><br>
+                <label for="unitsFIlter">Filter by # of Units:</label>
+                <br>
+                <select id="unitsFilter" onchange="updateFilters()">
+                    <option value="all">All</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+
+                </select>
+            </div>
+        </div>
+
+        <table border="1", id="coursesTable">
+            <tr>
+                <th style ='width: 25%'>Course</th>
+                <th style ='width: 12.5%'>Faculty</th>
+                <th style ='width: 12.5%'>Difficulty</th>
+                <th style ='width: 5%'>Units</th>
+                <th style ='width: 30%'>Description</th>
+                <th style ='width: 3%'>Info</th>
+            </tr>
+            {% for course in courses %}
+                <tr style='padding-left: 10px;'>
+                    <td>{{ course[1] }}</td>
+                    <td>{{ course[2] }}</td>
+                    <td style='text-align: center;'>{{ course[3] }}</td>
+                    <td style='text-align: center;'>{{ course[4] }}</td>
+                    <td>{{ course[5] }}</td>
+                    <td href="get_course_info" onclick="displayInfo('{{ course[1] }}')">
+                        <span style='font-size:20px;'>&#128269;</span>
+                    </td>
+                </tr>
+            {% endfor %}
+
+            <p class="output" id="output1"></p>
+        </table>
+    </div>
+
+
+    <script>
+        function updateFilters() {
+            const searchInput = document.getElementById('myInput').value.toLowerCase();
+            const selectedFaculty = document.getElementById('areaFilter').value.toLowerCase();
+            const selectedDifficulty = document.getElementById('difficultyFilter').value.toLowerCase();
+            const selectedUnits = document.getElementById('unitsFilter').value.toLowerCase();
+    
+            const table = document.getElementById('coursesTable');
+            const rows = table.getElementsByTagName('tr');
+    
+            for (let i = 1; i < rows.length; i++) {
+                let cells = rows[i].getElementsByTagName('td');
+                if (cells.length < 4) continue;
+    
+                const course = cells[0].textContent.trim().toLowerCase();
+                const faculty = cells[1].textContent.trim().toLowerCase();
+                const difficulty = cells[2].textContent.trim().toLowerCase();
+                const units = cells[3].textContent.trim().toLowerCase();
+    
+                const searchMatch = searchInput === "" || course.includes(searchInput) || faculty.includes(searchInput) || difficulty.includes(searchInput);
+                const facultyMatch = selectedFaculty === "all" || faculty === selectedFaculty;
+                const difficultyMatch = selectedDifficulty === "all" || difficulty === selectedDifficulty;
+                const unitsMatch = selectedUnits === "all" || units === selectedUnits;
+    
+                rows[i].style.display = searchMatch && facultyMatch && difficultyMatch && unitsMatch ? "" : "none";
+            }
+        }
+
+        function displayInfo(courseName) {
+            fetch(`/get_course_info/${courseName}`)
+                .then(response => response.json())
+                .then(data => {
+
+                    document.querySelector('.subject-box h2').innerHTML = courseName;
+                    document.querySelector('.subject-box #description').innerHTML = data.description;
+                    document.querySelector('.subject-box #difficulty').innerHTML = data.difficulty;
+                    document.querySelector('.subject-box #scaling').innerHTML = data.scaling;
+                });
+        }
+    </script>
+
+    
+    <div class="subject-box">
+        <h1>Course Information:</h1>
+        <h2></h2>
+
+        <div style="padding-right: 20px;">
+        <h2>Course Description:</h2>
+        <p id="description"></p>
+
+
+        <h2>Course Difficulty:</h2>
+        <p id="difficulty"></p>
+        
+
+        <h2>Course Scaling:</h2>
+        <p id="scaling"></p>
+        </div>
+    </div>
+
+{% endblock %}

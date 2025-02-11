@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{%if "user" in session%}
+    {% block log %}
+        <button class="button-17" role="button" onclick="window.location.href = '/logout';">Logout</button>
+    {% endblock %}
+{% endif %}
+
+
+
+{% block content %}
+
+{% with messages = get_flashed_messages() %}
+    {% if messages %}
+        {% for msg in messages %}
+
+        <div class="alert">
+            <span class="closebtn" onclick="this.parentElement.style.display='none';">&times;</span>  
+            {{msg}}
+        </div>
+
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+
+    <div class ="search-box">     
+        <label for="myInput"></label>
+        <input type="text" placeholder="Search.." id="myInput" onkeyup="updateFilters()">
+
+        <div class="search-container">
+            <div class="filter-container">
+                <div class="filter">
+                    <label for="facultyFilter">Filter by Faculty:</label>
+                    <select id="areaFilter" onchange="updateFilters()">
+                        <option value="all">All</option>
+                        <option value="English">English</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="HSIE">HSIE</option>
+                        <option value="TAS">TAS</option>
+                        <option value="Creative Arts">Creative Arts</option>
+                        <option value="PDHPE">PDHPE</option>
+                        <option value="Languages">Languages</option>
+                        <option value="VET">VET</option>
+                    </select>
+
+
+                    <br><br>
+                    <label for="difficultyFilter">Filter by Difficulty:</label>
+                    <select id="difficultyFilter" onchange="updateFilters()">
+                        <option value="all">All</option>
+                        <option value="Standard">Standard</option>
+                        <option value="Advanced">Advanced</option>
+                        <option value="Extension">Extension</option>
+                    </select>
+                    <br><br>
+                    <label for="unitsFIlter">Filter by # of Units:</label>
+                    <br>
+                    <select id="unitsFilter" onchange="updateFilters()">
+                        <option value="all">All</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+
+                    </select>
+                </div>
+            </div>
+
+            <table border="1", id="coursesTable">
+                <tr>
+                    <th style ='width: 25%'>Course</th>
+                    <th style ='width: 12.5%'>Faculty</th>
+                    <th style ='width: 12.5%'>Difficulty</th>
+                    <th style ='width: 5%'>Units</th>
+                    <th style ='width: 30%'>Description</th>
+                    <th style ='width: 3%'>Add</th>
+                </tr>
+                {% for course in courses %}
+                    <tr style='padding-left: 10px;'>
+                        <td>{{ course[1] }}</td>
+                        <td>{{ course[2] }}</td>
+                        <td style='text-align: center;'>{{ course[3] }}</td>
+                        <td style='text-align: center;'>{{ course[4] }}</td>
+                        <td>{{ course[5] }}</td>
+                        <td style='padding-left: 4px;'>
+                            <input 
+                                type="checkbox" 
+                                onclick="addCourse('{{ course[1] }}')" 
+                                {% if course[1] in chosen_courses %}disabled{% endif %}
+                            >
+                        </td>
+                    </tr>
+                {% endfor %}
+
+                <p class="output" id="output1"></p>
+            </table>
+
+        </div>
+        <script>
+            function updateFilters() {
+                const searchInput = document.getElementById('myInput').value.toLowerCase();
+                const selectedFaculty = document.getElementById('areaFilter').value.toLowerCase();
+                const selectedDifficulty = document.getElementById('difficultyFilter').value.toLowerCase();
+                const selectedUnits = document.getElementById('unitsFilter').value.toLowerCase();
+        
+                const table = document.getElementById('coursesTable');
+                const rows = table.getElementsByTagName('tr');
+        
+                for (let i = 1; i < rows.length; i++) {
+                    let cells = rows[i].getElementsByTagName('td');
+                    if (cells.length < 4) continue;
+        
+                    const course = cells[0].textContent.trim().toLowerCase();
+                    const faculty = cells[1].textContent.trim().toLowerCase();
+                    const difficulty = cells[2].textContent.trim().toLowerCase();
+                    const units = cells[3].textContent.trim().toLowerCase();
+        
+                    const searchMatch = searchInput === "" || course.includes(searchInput) || faculty.includes(searchInput) || difficulty.includes(searchInput);
+                    const facultyMatch = selectedFaculty === "all" || faculty === selectedFaculty;
+                    const difficultyMatch = selectedDifficulty === "all" || difficulty === selectedDifficulty;
+                    const unitsMatch = selectedUnits === "all" || units === selectedUnits;
+        
+                    rows[i].style.display = searchMatch && facultyMatch && difficultyMatch && unitsMatch ? "" : "none";
+                }
+            }
+        
+            function addCourse(courseName) {
+                fetch('/add_course', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course: courseName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateChosenCoursesTable(data);
+                    } else {
+                        alert(data.message);
+                    }
+                });
+            }
+
+            function removeCourse(courseName) {
+                fetch('/remove_course', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ course: courseName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    updateChosenCoursesTable(data);
+                });
+            }
+
+            function updateChosenCoursesTable(data) {
+                const table = document.getElementById('ChosencoursesTable');
+                
+
+                table.innerHTML = `
+                    <tr>
+                        <th style='width: 80%'>Course</th>
+                        <th style='width: 15%'>Units</th>
+                        <th style='width: 15%'>Remove</th>
+                    </tr>
+                `;
+                
+                data.chosen_courses.forEach(course => {
+                    let row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style='height: 50px; text-align: center;'>${course}</td>
+                        <td style='height: 50px; text-align: center;'>${course.includes("Extension") ? 1 : 2}</td>
+
+                        <td onclick="removeCourse('${course}')" style='padding-left: 4px; height: 50px' align="center">
+                            <span style='font-size:20px;'>&#10060;</span>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+
+                let totalRow = document.createElement('tr');
+                totalRow.innerHTML = `
+                    <td><strong>Total Units</strong></td>
+                    <td style='text-align: center'><strong>${data.total_units}</strong></td>
+                    <td></td>
+                `;
+                table.appendChild(totalRow);
+
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    if (data.chosen_courses.includes(checkbox.getAttribute('onclick').match(/'(.*?)'/)[1])) {
+                        checkbox.disabled = true;
+                    } else {
+                        checkbox.disabled = false;
+                    }
+                });
+            }
+
+        </script>
+        
+
+
+    </div>
+    
+    <div class="subject-box">
+        <h1 style='padding-left: 28px;'>Chosen Courses:</h1>
+        <div class="subject-container">
+            <table border="1" id="ChosencoursesTable" style='width: 95%; height: 450px;'>
+                <tr>
+                    <th style='width: 80%'>Course</th>
+                    <th style='width: 15%'>Units</th>
+                    <th style='width: 15%'>Remove</th>
+                </tr>
+                {% for course in chosen_courses %}
+                    <tr style='height: 54px'>
+                        <td style='text-align: center'>{{ course }}</td>
+                        <td style='text-align: center'>{{ 1 if "Extension" in course else 2 }}</td>
+                        <td onclick="removeCourse('{{ course }}')" style='padding-left: 4px;' align="center">
+                            <span style='font-size:20px;'>&#10060;</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tr>
+                    <td><strong>Total Units</strong></td>
+                    <td style='text-align: center'><strong>{{ total_units }}</strong></td>
+                    <td></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+{% endblock %}
